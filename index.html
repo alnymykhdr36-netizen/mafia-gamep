@@ -1,0 +1,92 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>لعبة المافيا</title>
+<style>
+body{background:#101522;color:white;font-family:Arial;text-align:center;padding:20px}
+h1{color:#e8b84d}
+.card{background:#1d2738;padding:20px;border-radius:18px;margin:15px auto;max-width:450px}
+textarea,button{width:100%;padding:14px;margin:8px 0;border:0;border-radius:10px;font-size:17px;box-sizing:border-box}
+textarea{height:180px}
+button{background:#d6a63c;color:#111;font-weight:bold}
+.secondary{background:#34445c;color:white}
+.hidden{display:none}
+#role{font-size:30px;padding:25px}
+</style>
+</head>
+<body>
+<h1>🎭 لعبة المافيا</h1>
+
+<div class="card" id="setup">
+<h2>أسماء اللاعبين</h2>
+<textarea id="names" placeholder="اكتب 20 اسماً، كل اسم في سطر"></textarea>
+<button onclick="startGame()">🎲 توزيع الأدوار</button>
+</div>
+
+<div class="card hidden" id="game">
+<h2 id="player"></h2>
+<p id="counter"></p>
+<button id="reveal" onclick="showRole()">👁️ اكشف دوري</button>
+<div id="role" class="hidden"></div>
+<button id="next" class="hidden" onclick="nextPlayer()">إخفاء الدور والانتقال</button>
+</div>
+
+<div class="card hidden" id="finished">
+<h2>🎉 انتهى توزيع الأدوار</h2>
+<p>جميع اللاعبين استلموا أدوارهم.</p>
+<button onclick="location.reload()">لعبة جديدة</button>
+</div>
+
+<script>
+let players=[],roles=[],current=0;
+
+function startGame(){
+players=document.getElementById('names').value.split('\n').map(x=>x.trim()).filter(Boolean);
+
+if(players.length!==20){
+alert('أدخل 20 اسماً بالضبط');
+return;
+}
+
+roles=['مافيا','مافيا','طبيب',...Array(17).fill('مواطن')];
+
+for(let i=roles.length-1;i>0;i--){
+let j=Math.floor(Math.random()*(i+1));
+[roles[i],roles[j]]=[roles[j],roles[i]];
+}
+
+document.getElementById('setup').classList.add('hidden');
+document.getElementById('game').classList.remove('hidden');
+showPlayer();
+}
+
+function showPlayer(){
+document.getElementById('player').textContent='اللاعب: '+players[current];
+document.getElementById('counter').textContent='اللاعب '+(current+1)+' من 20';
+document.getElementById('role').classList.add('hidden');
+document.getElementById('reveal').classList.remove('hidden');
+document.getElementById('next').classList.add('hidden');
+}
+
+function showRole(){
+document.getElementById('role').textContent='دورك: '+roles[current];
+document.getElementById('role').classList.remove('hidden');
+document.getElementById('reveal').classList.add('hidden');
+document.getElementById('next').classList.remove('hidden');
+}
+
+function nextPlayer(){
+current++;
+if(current===20){
+document.getElementById('game').classList.add('hidden');
+document.getElementById('finished').classList.remove('hidden');
+}else{
+showPlayer();
+}
+}
+</script>
+</body>
+</html>
