@@ -4,88 +4,232 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>لعبة المافيا</title>
+<meta name="theme-color" content="#101522">
+<title>مافيا - لعبة الأدوار السرية</title>
 <style>
-body{background:#101522;color:white;font-family:Arial;text-align:center;padding:20px}
-h1{color:#e8b84d}
-.card{background:#1d2738;padding:20px;border-radius:18px;margin:15px auto;max-width:450px}
-textarea,button{width:100%;padding:14px;margin:8px 0;border:0;border-radius:10px;font-size:17px;box-sizing:border-box}
-textarea{height:180px}
+*{box-sizing:border-box}
+body{margin:0;background:#101522;color:#fff;font-family:Arial;text-align:center;padding:16px}
+h1{color:#e8b84d;font-size:30px}
+h2{color:#e8b84d}
+.card{background:#1d2738;padding:18px;border-radius:18px;margin:15px auto;max-width:500px}
+label{display:block;text-align:right;margin:12px 0 5px}
+input,textarea,button{width:100%;padding:13px;margin:6px 0;border:0;border-radius:10px;font-size:16px}
+input,textarea{background:#fff;color:#111}
+textarea{height:150px}
 button{background:#d6a63c;color:#111;font-weight:bold}
-.secondary{background:#34445c;color:white}
-.hidden{display:none}
-#role{font-size:30px;padding:25px}
+.secondary{background:#39475e;color:white}
+.danger{background:#a83c46;color:white}
+.hidden{display:none!important}
+.row{display:flex;gap:8px;align-items:center}
+.row input:first-child{flex:1;min-width:0}
+.row input:last-of-type{width:85px}
+.row button{width:48px}
+.info{color:#bdc6d5;font-size:14px}
+.rolebox{background:#293951;padding:28px 12px;border-radius:14px;font-size:28px;margin:20px 0}
+.number{font-size:22px;color:#e8b84d}
 </style>
 </head>
 <body>
+
 <h1>🎭 لعبة المافيا</h1>
+<p class="info">أنشئ لعبتك واختر الأدوار التي تريدها</p>
 
 <div class="card" id="setup">
-<h2>أسماء اللاعبين</h2>
-<textarea id="names" placeholder="اكتب 20 اسماً، كل اسم في سطر"></textarea>
-<button onclick="startGame()">🎲 توزيع الأدوار</button>
+<h2>⚙️ إعدادات المباراة</h2>
+
+<label>عدد اللاعبين (من 5 إلى 30)</label>
+<input id="playerCount" type="number" min="5" max="30" value="10">
+
+<h3>الأدوار الأساسية</h3>
+
+<div class="row">
+<input value="🕵️ المافيا" disabled>
+<input id="mafia" type="number" min="0" value="2">
+</div>
+
+<div class="row">
+<input value="👨‍⚕️ الطبيب" disabled>
+<input id="doctor" type="number" min="0" value="1">
+</div>
+
+<div class="row">
+<input value="🔎 المحقق" disabled>
+<input id="detective" type="number" min="0" value="1">
+</div>
+
+<h3>أضف أدواراً أخرى</h3>
+<div id="customRoles"></div>
+<button class="secondary" onclick="addRole()">＋ إضافة دور جديد</button>
+
+<div class="card">
+<p class="number" id="remaining">المواطنون: 6</p>
+<p class="info">يتم حساب المواطنين تلقائياً حسب الأدوار المختارة</p>
+</div>
+
+<h3>أسماء اللاعبين</h3>
+<p class="info">اكتب كل اسم في سطر منفصل</p>
+<textarea id="names" placeholder="أحمد&#10;محمد&#10;علي&#10;سالم"></textarea>
+
+<button onclick="startGame()">🎲 توزيع الأدوار وبدء اللعبة</button>
+<p class="info" id="error"></p>
 </div>
 
 <div class="card hidden" id="game">
-<h2 id="player"></h2>
-<p id="counter"></p>
+<h2>🔒 توزيع الأدوار السرية</h2>
+<h3 id="playerTitle"></h3>
+<p class="info" id="counter"></p>
+<p>أعط الهاتف للاعب دون أن يرى الآخرون الشاشة</p>
 <button id="reveal" onclick="showRole()">👁️ اكشف دوري</button>
-<div id="role" class="hidden"></div>
-<button id="next" class="hidden" onclick="nextPlayer()">إخفاء الدور والانتقال</button>
+<div id="role" class="rolebox hidden"></div>
+<button id="next" class="hidden" onclick="nextPlayer()">إخفاء الدور والانتقال للاعب التالي</button>
 </div>
 
 <div class="card hidden" id="finished">
-<h2>🎉 انتهى توزيع الأدوار</h2>
+<h2>🎉 اكتمل توزيع الأدوار</h2>
 <p>جميع اللاعبين استلموا أدوارهم.</p>
-<button onclick="location.reload()">لعبة جديدة</button>
+<button onclick="newGame()">🔄 مباراة جديدة</button>
 </div>
 
 <script>
-let players=[],roles=[],current=0;
+let players=[];
+let roles=[];
+let current=0;
+let custom=[];
+
+function getCounts(){
+return [
+{name:"🕵️ المافيا",count:Number(document.getElementById("mafia").value)},
+{name:"👨‍⚕️ الطبيب",count:Number(document.getElementById("doctor").value)},
+{name:"🔎 المحقق",count:Number(document.getElementById("detective").value)},
+...custom.filter(x=>x.name.trim()).map(x=>({name:x.name.trim(),count:Number(x.count)}))
+];
+}
+
+function updateRemaining(){
+let total=Number(document.getElementById("playerCount").value);
+let counts=getCounts();
+let used=counts.reduce((sum,r)=>sum+r.count,0);
+let remaining=total-used;
+document.getElementById("remaining").textContent=
+remaining>=0?"👤 المواطنون: "+remaining:"⚠️ الأدوار أكثر من اللاعبين";
+}
+
+["playerCount","mafia","doctor","detective"].forEach(id=>{
+document.getElementById(id).addEventListener("input",updateRemaining);
+});
+
+function addRole(){
+custom.push({name:"",count:1});
+renderRoles();
+}
+
+function renderRoles(){
+let box=document.getElementById("customRoles");
+box.innerHTML="";
+custom.forEach((r,i)=>{
+let row=document.createElement("div");
+row.className="row";
+
+let name=document.createElement("input");
+name.placeholder="مثال: القناص أو الحارس";
+name.value=r.name;
+name.oninput=()=>{custom[i].name=name.value;updateRemaining()};
+
+let count=document.createElement("input");
+count.type="number";
+count.min="0";
+count.value=r.count;
+count.oninput=()=>{custom[i].count=count.value;updateRemaining()};
+
+let del=document.createElement("button");
+del.textContent="×";
+del.className="danger";
+del.onclick=()=>{custom.splice(i,1);renderRoles()};
+
+row.append(name,count,del);
+box.appendChild(row);
+});
+updateRemaining();
+}
 
 function startGame(){
-players=document.getElementById('names').value.split('\n').map(x=>x.trim()).filter(Boolean);
+let total=Number(document.getElementById("playerCount").value);
+let names=document.getElementById("names").value;
+players=names.split("\n").map(x=>x.trim()).filter(Boolean);
+let error=document.getElementById("error");
 
-if(players.length!==20){
-alert('أدخل 20 اسماً بالضبط');
+if(!Number.isInteger(total)||total<5||total>30){
+error.textContent="اختر عدداً بين 5 و30 لاعباً";
+return;
+}
+if(players.length!==total){
+error.textContent="عدد الأسماء يجب أن يساوي عدد اللاعبين المحدد. أدخلت "+players.length+" أسماء.";
+return;
+}
+if(new Set(players).size!==players.length){
+error.textContent="هناك أسماء مكررة، يرجى تعديلها";
 return;
 }
 
-roles=['مافيا','مافيا','طبيب',...Array(17).fill('مواطن')];
+let counts=getCounts();
+if(counts.some(r=>!Number.isInteger(r.count)||r.count<0)){
+error.textContent="تأكد من أن أعداد الأدوار أرقام صحيحة وغير سالبة";
+return;
+}
+
+let used=counts.reduce((sum,r)=>sum+r.count,0);
+if(used>total){
+error.textContent="مجموع الأدوار أكبر من عدد اللاعبين";
+return;
+}
+
+roles=[];
+counts.forEach(r=>{
+for(let i=0;i<r.count;i++)roles.push(r.name);
+});
+for(let i=roles.length;i<total;i++)roles.push("👤 مواطن");
 
 for(let i=roles.length-1;i>0;i--){
 let j=Math.floor(Math.random()*(i+1));
 [roles[i],roles[j]]=[roles[j],roles[i]];
 }
 
-document.getElementById('setup').classList.add('hidden');
-document.getElementById('game').classList.remove('hidden');
+current=0;
+error.textContent="";
+document.getElementById("setup").classList.add("hidden");
+document.getElementById("game").classList.remove("hidden");
 showPlayer();
 }
 
 function showPlayer(){
-document.getElementById('player').textContent='اللاعب: '+players[current];
-document.getElementById('counter').textContent='اللاعب '+(current+1)+' من 20';
-document.getElementById('role').classList.add('hidden');
-document.getElementById('reveal').classList.remove('hidden');
-document.getElementById('next').classList.add('hidden');
+document.getElementById("playerTitle").textContent="اللاعب: "+players[current];
+document.getElementById("counter").textContent="اللاعب "+(current+1)+" من "+players.length;
+document.getElementById("role").classList.add("hidden");
+document.getElementById("reveal").classList.remove("hidden");
+document.getElementById("next").classList.add("hidden");
 }
 
 function showRole(){
-document.getElementById('role').textContent='دورك: '+roles[current];
-document.getElementById('role').classList.remove('hidden');
-document.getElementById('reveal').classList.add('hidden');
-document.getElementById('next').classList.remove('hidden');
+document.getElementById("role").textContent="دورك هو: "+roles[current];
+document.getElementById("role").classList.remove("hidden");
+document.getElementById("reveal").classList.add("hidden");
+document.getElementById("next").classList.remove("hidden");
 }
 
 function nextPlayer(){
 current++;
-if(current===20){
-document.getElementById('game').classList.add('hidden');
-document.getElementById('finished').classList.remove('hidden');
+if(current>=players.length){
+document.getElementById("game").classList.add("hidden");
+document.getElementById("finished").classList.remove("hidden");
 }else{
 showPlayer();
 }
+}
+
+function newGame(){
+document.getElementById("finished").classList.add("hidden");
+document.getElementById("setup").classList.remove("hidden");
+document.getElementById("names").value="";
 }
 </script>
 </body>
